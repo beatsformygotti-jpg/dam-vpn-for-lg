@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $j = json_decode($body, true);
     if (!is_array($j) || !isset($j['iv'], $j['ct'])
         || !preg_match('/^[A-Za-z0-9_-]{16}$/', $j['iv'])
-        || !preg_match('/^[A-Za-z0-9_-]{24,1400000}$/', $j['ct'])) {
+        || strlen($j['ct']) < 24 || !preg_match('/^[A-Za-z0-9_-]+$/', $j['ct'])) {
         reply(400, ['error' => 'bad payload']);
     }
     if (file_exists($file)) {

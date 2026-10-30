@@ -1,0 +1,75 @@
+/* D.A.M VPN for LG — стиль «Стекло». 1rem = 1/108 высоты экрана: на 1080p это 10px, на 720p — 6,7px, на 4K — 20px.
+   Ширины — в долях и fr, поэтому интерфейс подстраивается под любой размер и пропорции экрана. */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: calc(100vh / 108); }
+body { width: 100vw; height: 100vh; overflow: hidden; color: #0a2a4a; font: 600 3rem/1.3 Manrope, "LG Smart UI", system-ui, sans-serif;
+  background: linear-gradient(135deg, #1aa8e0, #0f6fc4 45%, #18a38a); }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+.bg { position: fixed; inset: 0; background: radial-gradient(circle at 15% 20%, #9ff3ff, transparent 40%), radial-gradient(circle at 85% 80%, #b6f7a8, transparent 45%); }
+.bub { position: absolute; border-radius: 50%; border: .2rem solid rgba(255,255,255,.5);
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.9), rgba(255,255,255,.15) 40%, rgba(255,255,255,.05) 70%); }
+.b1 { left: 3%; top: 65%; width: 22rem; height: 22rem; } .b2 { left: 54%; top: 4%; width: 14rem; height: 14rem; } .b3 { right: 1%; bottom: 0; width: 18rem; height: 18rem; }
+
+.screen { position: fixed; inset: 0; padding: 11rem 6% 10rem; display: grid; grid-template-columns: 1.55fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 5rem; }
+.screen[hidden] { display: none; }
+.panel { position: relative; background: rgba(255,255,255,.28); border: .2rem solid rgba(255,255,255,.65); border-radius: 4.4rem; padding: 6rem;
+  backdrop-filter: blur(2.4rem); -webkit-backdrop-filter: blur(2.4rem); box-shadow: 0 3rem 8rem rgba(0,40,90,.25), inset 0 .2rem rgba(255,255,255,.8); min-width: 0; }
+.panel.full { grid-column: 1 / -1; }
+.logo { font: 900 4rem Unbounded, sans-serif; color: #fff; text-shadow: 0 .2rem 1rem rgba(0,40,90,.3); white-space: nowrap; }
+.logo span { background: #e8472a; padding: .2rem 1.2rem; border-radius: 1rem; margin-right: 1rem; }
+.state { font: 700 9.2rem/1 Unbounded, sans-serif; color: #fff; margin: 6rem 0 1.4rem; text-shadow: 0 .4rem 2rem rgba(0,40,90,.35); }
+.off .state { color: rgba(255,255,255,.82); }
+.sub { font-size: 3.4rem; color: #eaffff; }
+.pill { margin-top: 6rem; width: 56rem; max-width: 100%; height: 13rem; border-radius: 7rem; position: relative; overflow: hidden;
+  background: linear-gradient(#8ff07a, #2fb24a 55%, #1f8f39); border: .3rem solid rgba(255,255,255,.85);
+  box-shadow: 0 2rem 5rem rgba(0,80,40,.4), inset 0 .6rem rgba(255,255,255,.6); font: 700 4.2rem Unbounded, sans-serif; color: #fff; text-shadow: 0 .2rem .6rem rgba(0,60,20,.5); }
+.pill:after { content: ""; position: absolute; left: 3rem; right: 3rem; top: .8rem; height: 4.8rem; border-radius: 4rem; background: linear-gradient(rgba(255,255,255,.75), rgba(255,255,255,0)); }
+.pill.busy { filter: saturate(.4); }
+.chips { display: flex; flex-wrap: wrap; gap: 2rem; margin-top: 6rem; }
+.chip { background: rgba(255,255,255,.55); border-radius: 2.6rem; padding: 1.8rem 2.6rem; font-weight: 700; }
+.chip small { display: block; font-size: 2rem; color: #2a5a7a; }
+
+.right { display: flex; flex-direction: column; padding: 4.4rem; }
+.head { display: flex; justify-content: space-between; font-weight: 800; color: #fff; margin-bottom: 1.8rem; }
+.list { flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 1.4rem; }
+.it { display: flex; justify-content: space-between; align-items: center; gap: 2rem; background: rgba(255,255,255,.4); border-radius: 2.4rem; padding: 2rem 2.6rem;
+  font-weight: 700; text-align: left; flex: none; }
+.it span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.it small { font-size: 2.2rem; color: #2a5a7a; white-space: nowrap; }
+.it.cur { background: rgba(255,255,255,.75); }
+.it.cur span:first-child:after { content: "  ✓"; color: #1f8f39; }
+.empty { color: #eaffff; font-size: 2.8rem; padding: 2rem; }
+.tools { display: flex; gap: 1.4rem; margin-top: 2rem; }
+.tool { flex: 1; height: 8rem; border-radius: 4rem; border: .3rem solid rgba(255,255,255,.85); color: #fff; font-weight: 800; background: rgba(255,255,255,.18); }
+.back { position: absolute; right: 6rem; top: 5rem; width: 26rem; flex: none; }
+
+/* фокус пульта — жёлтая рамка */
+[data-focus].focus { box-shadow: 0 0 0 .8rem #ffd84a, 0 1rem 3rem rgba(0,40,90,.3); }
+.it.focus { background: #fff; }
+.pill.focus { box-shadow: 0 0 0 1rem #ffd84a, 0 2rem 5rem rgba(0,80,40,.4), inset 0 .6rem rgba(255,255,255,.6); }
+
+.hint { position: fixed; left: 6%; bottom: 3.4rem; font-size: 2.4rem; color: #eaffff; }
+
+.addgrid { display: grid; grid-template-columns: auto 1fr; gap: 7rem; margin-top: 6rem; align-items: center; }
+.qr { width: 52rem; height: 60rem; background: #fff; border-radius: 3.6rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.2rem;
+  box-shadow: 0 2rem 5rem rgba(0,40,90,.25); }
+.qr #qr { width: 42rem; height: 42rem; } .qr #qr svg, .qr #qr img { width: 100%; height: 100%; }
+.qr span { font-size: 2.6rem; color: #2a5a7a; font-weight: 700; }
+.steps h2 { font: 700 5.4rem/1.1 Unbounded, sans-serif; color: #fff; margin-bottom: 3.6rem; text-shadow: 0 .4rem 2rem rgba(0,40,90,.3); }
+.step { display: flex; gap: 2.2rem; align-items: flex-start; font-size: 3.2rem; color: #fff; margin-bottom: 3rem; }
+.step b { flex: 0 0 5.6rem; height: 5.6rem; border-radius: 50%; background: rgba(255,255,255,.9); color: #0f6fc4; font: 800 3rem Unbounded, sans-serif;
+  display: flex; align-items: center; justify-content: center; }
+.wait { display: flex; align-items: center; gap: 1.4rem; color: #fff; font-weight: 800; margin-top: 2rem; }
+.wait i { width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #ffd84a; box-shadow: 0 0 1rem #ffd84a; }
+.wait.ok i { background: #8ff07a; box-shadow: 0 0 1rem #8ff07a; } .wait.err i { background: #ff7a5a; box-shadow: 0 0 1rem #ff7a5a; }
+
+.opts { display: grid; grid-template-columns: 1fr 1fr; gap: 1.8rem 4rem; margin-top: 5rem; }
+.opt { display: flex; justify-content: space-between; align-items: center; gap: 2rem; background: rgba(255,255,255,.4); border-radius: 2.6rem; padding: 2.6rem 3rem; font-weight: 700; text-align: left; }
+.opt small { display: block; font-size: 2.2rem; color: #2a5a7a; margin-top: .4rem; }
+.opt.focus { background: #fff; }
+.sw { flex: 0 0 12rem; height: 6.4rem; border-radius: 4rem; background: rgba(10,42,74,.25); position: relative; }
+.sw:after { content: ""; position: absolute; left: .6rem; top: .6rem; width: 5.2rem; height: 5.2rem; border-radius: 50%; background: #fff; box-shadow: 0 .2rem .6rem rgba(0,0,0,.25); transition: left .15s; }
+.sw.on { background: linear-gradient(#8ff07a, #2fb24a); } .sw.on:after { left: 6.2rem; }
+.val { color: #0f6fc4; font-weight: 800; white-space: nowrap; }
+
+@media (max-aspect-ratio: 4/3) { .screen { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); } .opts { grid-template-columns: 1fr; } }

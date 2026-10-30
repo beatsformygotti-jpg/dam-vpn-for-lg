@@ -37,6 +37,7 @@ tvctl — D.A.M VPN for LG, этап 1 (Xray: SOCKS5 → VLESS + gRPC + TLS), п
   tun-start       запуск с «мёртвой рукой»: без tun-confirm за 5 минут откат сам
   tun-check | tun-diag | tun-confirm | tun-stop
   dns-facts       без туннеля: кто отвечает на www.youtube.com и какой DNS видит приложение
+  install-app | uninstall-app   этап 3: поставить или удалить приложение D.A.M VPN на ТВ
   speedtest [N…]  скорость ТВ: напрямую и через Xray (серверы №N, по умолчанию 48 и 43; BUILDS=, RUNS=)
 Адрес ТВ по умолчанию root@192.168.1.146, другой: TV=root@АДРЕС tvctl …
 EOF
@@ -82,6 +83,20 @@ tun-start) on_tv "IPV6_BLOCK=${IPV6_BLOCK:-1} IPV6_OFF=${IPV6_OFF:-0} DEADMAN=${
 tun-check) on_tv 'sh -s' < "$STAGE2/tv/check.sh" 2>&1 | report tun-check ;;
 tun-diag) on_tv 'sh -s' < "$STAGE2/tv/diag.sh" 2>&1 | report tun-diag ;;
 dns-facts) on_tv 'sh -s' < "$STAGE2/tv/dnsfacts.sh" 2>&1 | report dns-facts ;;
+install-app)
+	# Этап 3: собрать .ipk, поставить на ТВ (dev/install, как ProxyTune ставился) и запустить фоновую часть
+	python3 -I "$ROOT/stage3/tools/build_ipk.py"
+	ipk=$(ls -t "$ROOT"/dist/com.damstudio.vpn_*_all.ipk | head -1)
+	AD=/media/developer/apps/usr/palm/applications/com.damstudio.vpn
+	{
+		on_tv "cat > /tmp/dam-vpn.ipk" < "$ipk"
+		on_tv "L=/tmp/dam-vpn.install.log; luna-send-pub -w 180000 -n 80 luna://com.webos.appInstallService/dev/install '{\"id\":\"com.damstudio.vpn\",\"ipkUrl\":\"/tmp/dam-vpn.ipk\",\"subscribe\":true}' > \$L 2>&1 & LP=\$!; i=0; while [ \$i -lt 90 ] && ! grep -q -E '\"state\": *\"(installed|install failed|failed)' \$L; do sleep 2; i=\$((i + 1)); done; kill \$LP 2>/dev/null; grep -o -E '\"(state|errorText)\": *[^,}]*' \$L | uniq | tail -4; rm -f /tmp/dam-vpn.ipk \$L; if grep -q . /dev/null; then :; fi; if [ -f $AD/service/damvpnd.js ]; then echo '✔ приложение установлено'; pkill -f damvpnd.js; sleep 1; sh $AD/service/run.sh; sleep 3; curl -s http://127.0.0.1:8098/api/status; echo; else echo '✘ приложение не установилось'; fi"
+	} 2>&1 | report install-app
+	;;
+uninstall-app)
+	AD=/media/developer/apps/usr/palm/applications/com.damstudio.vpn
+	on_tv "[ -d /tmp/damvpn ] && TVVPN_DIR=/tmp/damvpn sh $AD/service/stop.sh; pkill -f damvpnd.js; rm -f /var/lib/webosbrew/init.d/70-damvpn; luna-send-pub -w 60000 -n 3 luna://com.webos.appInstallService/dev/remove '{\"id\":\"com.damstudio.vpn\",\"subscribe\":true}' 2>&1 | grep -o -E '\"(state|statusValue)\": *[^,}]*' | head -5; echo 'подписка и настройки остались в /media/developer/damvpn'" 2>&1 | report uninstall-app
+	;;
 app-facts) on_tv 'sh -s' < "$ROOT/stage3/tv/appfacts.sh" 2>&1 | report app-facts ;;
 speedtest)
 	# Замер: напрямую и через временный Xray (SOCKS5) для 32- и 64-битной сборки и нескольких серверов подписки.

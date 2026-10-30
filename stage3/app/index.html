@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D.A.M VPN for LG</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="bg"><i class="bub b1"></i><i class="bub b2"></i><i class="bub b3"></i></div>
+
+<!-- Главный экран -->
+<section class="screen" id="main">
+  <div class="panel left">
+    <div class="logo"><span>D.A.M</span>VPN for LG</div>
+    <div class="state" id="state">Отключено</div>
+    <div class="sub" id="sub">—</div>
+    <button class="pill" id="power" data-focus>Подключить</button>
+    <div class="chips">
+      <div class="chip"><small>Скорость</small><b id="speed">—</b></div>
+      <div class="chip"><small>Пинг</small><b id="ping">—</b></div>
+      <div class="chip"><small>Подписка</small><b id="subname">нет</b></div>
+    </div>
+  </div>
+  <div class="panel right">
+    <div class="head"><span>Все серверы</span><span id="count">0</span></div>
+    <div class="list" id="servers"></div>
+    <div class="tools">
+      <button class="tool" id="toAdd" data-focus>+ Подписка</button>
+      <button class="tool" id="toSettings" data-focus>Настройки</button>
+    </div>
+  </div>
+  <div class="hint">OK — выбрать · ◀ ▶ ▲ ▼ — перейти · НАЗАД — выйти</div>
+</section>
+
+<!-- Добавление подписки -->
+<section class="screen" id="add" hidden>
+  <div class="panel full">
+    <div class="logo"><span>D.A.M</span>VPN for LG</div>
+    <div class="addgrid">
+      <div class="qr"><div id="qr"></div><span>Наведите камеру телефона</span></div>
+      <div class="steps">
+        <h2 id="addTitle">Добавьте свою подписку</h2>
+        <div class="step"><b>1</b>Отсканируйте QR-код телефоном</div>
+        <div class="step"><b>2</b>Вставьте ссылку на подписку от своего VPN-сервиса</div>
+        <div class="step"><b>3</b>Нажмите «Готово» — серверы появятся здесь</div>
+        <div class="wait" id="addStatus"><i></i>Ждём телефон…</div>
+      </div>
+    </div>
+    <button class="tool back" id="addBack" data-focus>← Назад</button>
+  </div>
+  <div class="hint">QR-код одноразовый и действует 10 минут · НАЗАД — вернуться</div>
+</section>
+
+<!-- Настройки -->
+<section class="screen" id="settings" hidden>
+  <div class="panel full">
+    <div class="logo"><span>D.A.M</span>Настройки</div>
+    <div class="opts" id="opts"></div>
+    <button class="tool back" id="setBack" data-focus>← Назад</button>
+  </div>
+  <div class="hint">OK — переключить · НАЗАД — вернуться</div>
+</section>
+
+<script src="vendor/qrcode.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

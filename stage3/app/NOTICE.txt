@@ -1,0 +1,7 @@
+D.A.M VPN for LG — https://github.com/beatsformygotti-jpg/dam-vpn-for-lg (MIT, D.A.M Studio)
+
+В программе используются:
+- Xray-core v26.10.29 — https://github.com/XTLS/Xray-core — лицензия MPL-2.0 (LICENSES/Xray-core-MPL-2.0.txt).
+  Файлы bin/xray-arm64 и bin/xray-arm32 — без изменений из официального релиза; исходный код: https://github.com/XTLS/Xray-core/tree/v26.10.29
+- QR Code Generator for JavaScript 1.4.4 — Kazuhiko Arase — лицензия MIT (vendor/qrcode.js).
+- Шрифты Manrope и Unbounded — лицензия SIL Open Font License 1.1.

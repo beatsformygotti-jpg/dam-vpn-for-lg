@@ -23,10 +23,17 @@ Product page: [damstudio.tech/vpn.html](https://damstudio.tech/vpn.html) · made
 |---|---|---|
 | 1 | Engine: Xray on the TV, VLESS + gRPC + TLS check | done, tested on a TV |
 | 2 | All TV traffic through the VPN (TUN), DNS through the VPN, rollback | done, tested on a TV |
-| 3 | App with the "Glass" UI, QR subscription import, autostart, `.ipk` | in progress |
+| 3 | App with the "Glass" UI, QR subscription import, autostart, `.ipk` | version 0.1.0, tested on a TV |
 
 Tested on LG 86UR81006LA, webOS TV 10.3.2 (webOS 25), rooted with Homebrew Channel.
-Until the app is ready, the VPN is controlled from a Mac with `tvctl`. An installable file will appear in [Releases](../../releases).
+## Installing on the TV
+
+1. Download `com.damstudio.vpn_0.1.0_all.ipk` from [Releases](../../releases).
+2. Install it with **webOS Dev Manager** (Install → choose the file), over **SSH** with `luna-send-pub … appInstallService/dev/install` (see the Russian README), or from a Mac with `stage1/mac/tvctl install-app`.
+3. Open **D.A.M VPN** → "+ Подписка" → scan the QR code with your phone, paste your subscription link, tap "Готово".
+4. Pick a server → "Подключить". The root background part is started automatically through Homebrew Channel.
+
+If a VPN is on on your phone, the subscription page may not open — turn it off for a minute.
 
 ## Requirements
 

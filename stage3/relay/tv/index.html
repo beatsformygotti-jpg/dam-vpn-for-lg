@@ -86,15 +86,17 @@ button:disabled { opacity: .55; }
     crypto.subtle.importKey('raw', unb64u(k), 'AES-GCM', false, ['encrypt'])
       .then(function (key) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, new TextEncoder().encode(text)); })
       .then(function (ct) {
+        var ctl = window.AbortController ? new AbortController() : null;
+        if (ctl) setTimeout(function () { ctl.abort(); }, 15000);
         return fetch('api.php?s=' + encodeURIComponent(s), { method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ iv: b64u(iv), ct: b64u(new Uint8Array(ct)) }) });
+          body: JSON.stringify({ iv: b64u(iv), ct: b64u(new Uint8Array(ct)) }), signal: ctl ? ctl.signal : undefined });
       })
       .then(function (r) {
         if (r.status === 200) { document.getElementById('form').style.display = 'none'; document.getElementById('ok').style.display = 'block'; return; }
         done.disabled = false;
         show(r.status === 409 ? 'По этому QR-коду подписка уже отправлена. Для новой откройте «Добавить подписку» на ТВ заново.' : 'Не получилось отправить (ошибка ' + r.status + '). Попробуйте ещё раз.', true);
       })
-      .catch(function () { done.disabled = false; show('Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.', true); });
+      .catch(function () { done.disabled = false; show('Нет связи с сервером. Если на телефоне включён VPN — выключите его и нажмите «Готово» ещё раз.', true); });
   };
 })();
 </script>

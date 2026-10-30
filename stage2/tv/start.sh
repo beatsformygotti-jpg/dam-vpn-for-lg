@@ -16,6 +16,8 @@ case "$D" in
 esac
 IPV6_BLOCK="${IPV6_BLOCK:-1}" # 1 — закрыть выход в интернет по IPv6 маршрутами unreachable
 IPV6_OFF="${IPV6_OFF:-0}"     # 1 — вместо этого выключить IPv6 на WAN (сбивает маршруты ConnMan до перезагрузки)
+DNS_VIA="${DNS_VIA:-1}"        # 0 — не переключать DNS ConnMan на Xray
+LAN_DIRECT="${LAN_DIRECT:-1}"  # 0 — и локальная сеть через VPN
 DEADMAN="${DEADMAN:-300}"
 MAXTTL="${MAXTTL:-3600}"
 case "$DEADMAN$MAXTTL" in '' | *[!0-9]*) echo "Стоп: DEADMAN и MAXTTL — числа секунд"; exit 2 ;; esac
@@ -156,11 +158,18 @@ main() {
 			n=$((n + 1))
 		done
 	fi
-	ip rule add pref 9000 to "$LAN" lookup main &&
+	{ [ "$LAN_DIRECT" = 0 ] || ip rule add pref 9000 to "$LAN" lookup main; } &&
 		ip rule add pref 9001 to "$SERVER/32" lookup main &&
 		ip rule add pref 9002 to 224.0.0.0/4 lookup main &&
 		ip rule add pref 9003 to 169.254.0.0/16 lookup main &&
 		ip rule add pref 9004 lookup $TABLE || { undo "не добавились правила маршрутизации"; return 1; }
+	# Адреса, которые должны открываться мимо VPN (сервер D.A.M для подписки с телефона, сервер подписки): 8995–8998
+	n=0
+	for ip in $DIRECT_IPS; do
+		[ $n -ge 4 ] && break
+		ip rule add pref $((8995 + n)) to "$ip/32" lookup main || { undo "не добавилось правило для $ip"; return 1; }
+		n=$((n + 1))
+	done
 	if [ "$IPV6_BLOCK" = 1 ]; then
 		echo 1 > "$D/ipv6.block"
 		ip -6 route add unreachable ::/1 && ip -6 route add unreachable 8000::/1 || { undo "не добавились маршруты, закрывающие IPv6"; return 1; }
@@ -169,16 +178,18 @@ main() {
 	if [ "$IPV6_OFF" = 1 ]; then
 		echo 1 > "/proc/sys/net/ipv6/conf/$WAN/disable_ipv6" || { undo "не выключился IPv6 на $WAN"; return 1; }
 	fi
-	# DNS приложений: ConnMan на время работы спрашивает Xray на адресе ТВ (сокет ConnMan привязан к Wi-Fi —
-	# адрес самого ТВ ему доступен), Xray отвечает через Quattro. Откат возвращает прежнюю настройку ConnMan.
-	i=0
-	while [ $i -lt 10 ] && ! netstat -lun 2> /dev/null | grep -q " $TVIP:53 "; do sleep 1; i=$((i + 1)); done
-	netstat -lun 2> /dev/null | grep -q " $TVIP:53 " || { undo "Xray не слушает $TVIP:53"; return 1; }
-	echo 1 > "$D/ns.changed"
-	connmanctl config "$svc" --nameservers "$TVIP" > /dev/null 2>&1 || { undo "ConnMan не принял DNS $TVIP"; return 1; }
-	sleep 1
-	connmanctl services "$svc" | grep -q "Nameservers.Configuration = \[ $TVIP \]" || { undo "ConnMan не переключился на DNS $TVIP"; return 1; }
-	echo "✔ ConnMan спрашивает адреса у Xray ($TVIP:53), ответы идут через Quattro"
+	if [ "$DNS_VIA" = 1 ]; then
+		# DNS приложений: ConnMan на время работы спрашивает Xray на адресе ТВ (сокет ConnMan привязан к Wi-Fi —
+		# адрес самого ТВ ему доступен), Xray отвечает через Quattro. Откат возвращает прежнюю настройку ConnMan.
+		i=0
+		while [ $i -lt 10 ] && ! netstat -lun 2> /dev/null | grep -q " $TVIP:53 "; do sleep 1; i=$((i + 1)); done
+		netstat -lun 2> /dev/null | grep -q " $TVIP:53 " || { undo "Xray не слушает $TVIP:53"; return 1; }
+		echo 1 > "$D/ns.changed"
+		connmanctl config "$svc" --nameservers "$TVIP" > /dev/null 2>&1 || { undo "ConnMan не принял DNS $TVIP"; return 1; }
+		sleep 1
+		connmanctl services "$svc" | grep -q "Nameservers.Configuration = \[ $TVIP \]" || { undo "ConnMan не переключился на DNS $TVIP"; return 1; }
+		echo "✔ ConnMan спрашивает адреса у Xray ($TVIP:53), ответы идут через Quattro"
+	fi
 	ip rule show | grep -E '^(899[0-9]|900[0-9]):'
 	ip route show table $TABLE
 

@@ -1,0 +1,13 @@
+{
+  "id": "com.damstudio.vpn",
+  "version": "0.1.0",
+  "vendor": "D.A.M Studio",
+  "type": "web",
+  "main": "index.html",
+  "title": "D.A.M VPN",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgColor": "#0f6fc4",
+  "uiRevision": 2,
+  "disableBackHistoryAPI": true
+}

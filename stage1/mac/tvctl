@@ -1,0 +1,125 @@
+#!/bin/bash
+# Пульт этапа 1. Всё общение с ТВ идёт отсюда. Скрипты на ТВ не копируются: они передаются в `sh -s` по SSH.
+# Вывод ТВ проходит через фильтр секретов и сохраняется в reports/ уже без секретов.
+# Одно SSH-соединение на 10 минут: пароль root спрашивается один раз.
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STAGE="$(dirname "$HERE")"
+ROOT="$(dirname "$STAGE")"
+STAGE2="$ROOT/stage2"
+SECRETS="${LGVPN_SECRETS:-$HOME/.config/lg-tv-vpn}"
+export LGVPN_SECRETS="$SECRETS"
+TV="${TV:-root@192.168.1.146}"
+TV_DIR=/tmp/tvvpn
+PY=(python3 -I "$HERE/lgvpn.py")
+SSH=(ssh -o ControlMaster=auto -o "ControlPath=$HOME/.ssh/cm-lgtv-%C" -o ControlPersist=10m -o ConnectTimeout=10 "$TV")
+
+on_tv() { "${SSH[@]}" "$@"; }
+report() { # $1 — имя отчёта; stdin → фильтр секретов → экран и reports/
+	mkdir -p "$ROOT/reports"
+	local f
+	f="$ROOT/reports/$(date +%Y-%m-%d_%H%M%S)-$1.txt"
+	"${PY[@]}" redact | tee "$f"
+	echo "→ отчёт без секретов: $f" >&2
+}
+usage() {
+	cat >&2 << 'EOF'
+tvctl — D.A.M VPN for LG, этап 1 (Xray: SOCKS5 → VLESS + gRPC + TLS), по порядку:
+  selftest        проверка без ТВ на фиктивных данных
+  facts           шаг А: сведения о ТВ, только чтение
+  fetch СБОРКА    шаг Б: скачать Xray и сверить SHA-256 (СБОРКА — по отчёту facts)
+  config [--list | --pick N]   шаг В: ссылка Quattro → конфиг (секреты в ~/.config/lg-tv-vpn)
+  push СБОРКА     шаг Г: Xray и конфиг в /tmp/tvvpn на ТВ
+  start | check | stop         шаг Г: запуск, проверка, остановка с удалением
+этап 2 (весь трафик ТВ через VPN, TUN):
+  tun-config      конфиг с TUN из конфига этапа 1 (затем push)
+  tun-start       запуск с «мёртвой рукой»: без tun-confirm за 5 минут откат сам
+  tun-check | tun-diag | tun-confirm | tun-stop
+  dns-facts       без туннеля: кто отвечает на www.youtube.com и какой DNS видит приложение
+  speedtest [N…]  скорость ТВ: напрямую и через Xray (серверы №N, по умолчанию 48 и 43; BUILDS=, RUNS=)
+Адрес ТВ по умолчанию root@192.168.1.146, другой: TV=root@АДРЕС tvctl …
+EOF
+}
+
+cmd="${1:-}"
+[ $# -gt 0 ] && shift
+case "$cmd" in
+selftest) exec "$HERE/selftest.sh" ;;
+facts)
+	{
+		echo "Время на Mac до входа: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+		on_tv 'sh -s' < "$STAGE/tv/facts.sh"
+		echo "Время на Mac после: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+	} 2>&1 | report facts
+	;;
+fetch) exec "$HERE/fetch_xray.sh" "$@" ;;
+config) "${PY[@]}" config "$@" 2>&1 | report config ;;
+tun-config) "${PY[@]}" tun-config "$@" 2>&1 | report tun-config ;;
+push)
+	build="${1:-}"
+	case "$build" in linux-*) ;; *) echo "Укажите сборку для ТВ, например: tvctl push linux-arm32-v7a" >&2; exit 2 ;; esac
+	bin="$ROOT/vendor/$build/xray"
+	[ -x "$bin" ] || { echo "Нет $bin — сначала: tvctl fetch $build" >&2; exit 1; }
+	for f in xray-config.json probe.env mask.sed; do
+		[ -s "$SECRETS/$f" ] || { echo "Нет $SECRETS/$f — сначала: tvctl config" >&2; exit 1; }
+	done
+	on_tv "p=\$(cat $TV_DIR/xray.pid 2>/dev/null) && kill -0 \"\$p\" 2>/dev/null && { echo 'Xray этапа 1 работает — сначала tvctl stop'; exit 1; }; exit 0"
+	on_tv "umask 077; mkdir -p $TV_DIR && cat > $TV_DIR/xray && chmod 700 $TV_DIR/xray" < "$bin"
+	on_tv "umask 077; cat > $TV_DIR/config.json" < "$SECRETS/xray-config.json"
+	on_tv "umask 077; cat > $TV_DIR/probe.env" < "$SECRETS/probe.env"
+	on_tv "umask 077; cat > $TV_DIR/mask.sed" < "$SECRETS/mask.sed"
+	[ -s "$SECRETS/xray-tun.json" ] && on_tv "umask 077; cat > $TV_DIR/config-tun.json" < "$SECRETS/xray-tun.json"
+	{
+		echo "Сборка $build, SHA-256 бинарника на Mac: $(cat "$ROOT/vendor/$build/SHA256-xray")"
+		on_tv "ls -la $TV_DIR; sha256sum $TV_DIR/xray 2>/dev/null || echo 'sha256sum на ТВ нет'; grep ' /tmp ' /proc/mounts"
+	} 2>&1 | report push
+	;;
+start) on_tv "TTL=${TTL:-900} sh -s" < "$STAGE/tv/start.sh" 2>&1 | report start ;;
+check) on_tv 'sh -s' < "$STAGE/tv/check.sh" 2>&1 | report check ;;
+stop) on_tv 'sh -s' < "$STAGE/tv/stop.sh" 2>&1 | report stop ;;
+tun-start) on_tv "IPV6_BLOCK=${IPV6_BLOCK:-1} IPV6_OFF=${IPV6_OFF:-0} DEADMAN=${DEADMAN:-300} MAXTTL=${MAXTTL:-3600} sh -s" < "$STAGE2/tv/start.sh" 2>&1 | report tun-start ;;
+tun-check) on_tv 'sh -s' < "$STAGE2/tv/check.sh" 2>&1 | report tun-check ;;
+tun-diag) on_tv 'sh -s' < "$STAGE2/tv/diag.sh" 2>&1 | report tun-diag ;;
+dns-facts) on_tv 'sh -s' < "$STAGE2/tv/dnsfacts.sh" 2>&1 | report dns-facts ;;
+app-facts) on_tv 'sh -s' < "$ROOT/stage3/tv/appfacts.sh" 2>&1 | report app-facts ;;
+speedtest)
+	# Замер: напрямую и через временный Xray (SOCKS5) для 32- и 64-битной сборки и нескольких серверов подписки.
+	picks=("$@")
+	[ ${#picks[@]} -gt 0 ] || picks=(48 43)
+	builds=${BUILDS:-linux-arm64-v8a}
+	tmp=$(mktemp -d "$SECRETS/speed.XXXXXX")
+	trap 'rm -rf "$tmp"' EXIT
+	{
+		on_tv "MODE=direct sh -s" < "$STAGE2/tv/speed.sh" || true
+		for b in $builds; do
+			[ -x "$ROOT/vendor/$b/xray" ] || "$HERE/fetch_xray.sh" "$b" > /dev/null
+			on_tv "umask 077; mkdir -p /tmp/tvvpn-speed && cat > /tmp/tvvpn-speed/xray && chmod 700 /tmp/tvvpn-speed/xray" < "$ROOT/vendor/$b/xray"
+			for n in "${picks[@]}"; do
+				mkdir -p -m 700 "$tmp/$n"
+				if ! "${PY[@]}" config --secrets-dir "$tmp/$n" --uri-file "$SECRETS/quattro.uri" --pick "$n" > /dev/null 2>&1; then
+					echo "№$n: ссылка не подходит"
+					continue
+				fi
+				kind=$(python3 -I -c 'import json, sys
+c = json.load(open(sys.argv[1]))
+c["log"]["loglevel"] = "info"
+open(sys.argv[1], "w").write(json.dumps(c))
+s = c["outbounds"][0]["streamSettings"]
+print(s["network"] + "+" + s["security"])' "$tmp/$n/xray-config.json")
+				on_tv "umask 077; cat > /tmp/tvvpn-speed/config.json" < "$tmp/$n/xray-config.json"
+				on_tv "RUNS=${RUNS:-3} MODE=proxy LABEL='$b, №$n ($kind)' sh -s" < "$STAGE2/tv/speed.sh" || true
+			done
+		done
+		on_tv "MODE=clean sh -s" < "$STAGE2/tv/speed.sh"
+	} 2>&1 | report speedtest
+	;;
+tun-confirm)
+	on_tv "[ -s $TV_DIR/session ] && [ ! -f $TV_DIR/rolled_back ] && date -u '+%H:%M:%S UTC' > $TV_DIR/confirmed && echo '✔ подтверждено: автоматического отката через 5 минут не будет; остановка — tvctl tun-stop' || echo '✘ нечего подтверждать: этап 2 не запущен или откат уже выполнен'" 2>&1 | report tun-confirm
+	;;
+tun-stop) on_tv 'sh -s' < "$STAGE2/tv/stop.sh" 2>&1 | report tun-stop ;;
+*)
+	usage
+	exit 2
+	;;
+esac

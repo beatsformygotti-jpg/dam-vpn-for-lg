@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>D.A.M VPN — подписка на телевизор</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; }
+body { font: 600 16px/1.45 Manrope, system-ui, sans-serif; color: #fff; padding: 28px 18px 40px;
+  background: radial-gradient(circle at 15% 15%, #9ff3ff, transparent 45%), radial-gradient(circle at 85% 85%, #b6f7a8, transparent 45%),
+  linear-gradient(150deg, #1aa8e0, #0f6fc4 50%, #18a38a) fixed; }
+.box { max-width: 440px; margin: 0 auto; }
+.logo { font: 900 16px Unbounded, sans-serif; }
+.logo span { background: #e8472a; padding: 1px 7px; border-radius: 6px; margin-right: 6px; }
+h1 { font: 700 27px/1.15 Unbounded, sans-serif; margin: 28px 0 10px; text-shadow: 0 2px 12px rgba(0,40,90,.3); }
+p { color: #eaffff; }
+textarea { width: 100%; height: 130px; margin-top: 22px; border-radius: 22px; border: 2px solid rgba(255,255,255,.75); background: rgba(255,255,255,.92);
+  color: #0a2a4a; font: 600 15px/1.4 Manrope, sans-serif; padding: 16px; resize: none; outline: none; }
+textarea:focus { border-color: #ffd84a; }
+button { width: 100%; height: 62px; border-radius: 34px; margin-top: 14px; font: 700 17px Unbounded, sans-serif; color: #fff; cursor: pointer; }
+.paste { background: rgba(255,255,255,.25); border: 2px solid rgba(255,255,255,.75); }
+.done { background: linear-gradient(#8ff07a, #2fb24a 55%, #1f8f39); border: 2px solid rgba(255,255,255,.9); text-shadow: 0 1px 4px rgba(0,60,20,.5);
+  box-shadow: 0 10px 24px rgba(0,80,40,.35), inset 0 3px rgba(255,255,255,.55); }
+button:disabled { opacity: .55; }
+.msg { margin-top: 18px; border-radius: 18px; padding: 14px 16px; background: rgba(255,255,255,.25); display: none; }
+.msg.err { background: rgba(200,30,10,.55); }
+.ok { text-align: center; display: none; }
+.ok .tick { width: 96px; height: 96px; border-radius: 50%; margin: 50px auto 18px; background: linear-gradient(#8ff07a, #2fb24a);
+  border: 3px solid #fff; display: flex; align-items: center; justify-content: center; font: 900 46px Unbounded, sans-serif; }
+.small { font-size: 13px; margin-top: 22px; opacity: .85; }
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo"><span>D.A.M</span>VPN for LG</div>
+  <div id="form">
+    <h1>Подписка на&nbsp;телевизор</h1>
+    <p>Вставьте ссылку на подписку от вашего VPN-сервиса и нажмите «Готово».</p>
+    <textarea id="link" placeholder="Вставьте сюда ссылку на подписку" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
+    <button class="paste" id="paste" type="button" hidden>Вставить из буфера</button>
+    <button class="done" id="done" type="button">Готово</button>
+    <div class="msg" id="msg"></div>
+    <p class="small">Ссылка шифруется прямо на этом телефоне. Сервер D.A.M видит только шифр и стирает его сразу после передачи.</p>
+  </div>
+  <div class="ok" id="ok">
+    <div class="tick">✓</div>
+    <h1>Отправлено</h1>
+    <p>Смотрите на телевизор — подписка появится через пару секунд.</p>
+  </div>
+</div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.hash.slice(1));
+  var s = q.get('s'), k = q.get('k');
+  var link = document.getElementById('link'), done = document.getElementById('done'), paste = document.getElementById('paste'), msg = document.getElementById('msg');
+
+  function show(text, err) { msg.textContent = text; msg.className = 'msg' + (err ? ' err' : ''); msg.style.display = 'block'; }
+  function b64u(bytes) { var t = ''; bytes.forEach(function (b) { t += String.fromCharCode(b); }); return btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function unb64u(t) { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; return Uint8Array.from(atob(t), function (c) { return c.charCodeAt(0); }); }
+  // Подписка: ссылка https://, ссылки серверов (vless:// и др.) или закодированный список
+  function looksLikeSub(t) {
+    return /^https?:\/\/\S+$/i.test(t) || /(^|\s)(vless|vmess|trojan|ss|hysteria2|hy2|tuic):\/\//i.test(t) || /^[A-Za-z0-9+\/=_\-\s]{60,}$/.test(t);
+  }
+
+  if (!s || !k || !/^[A-Za-z0-9_-]{22,64}$/.test(s) || unb64u(k).length !== 32) {
+    show('Эту страницу нужно открывать по QR-коду с телевизора: в D.A.M VPN откройте «Добавить подписку».', true);
+    done.disabled = true;
+    return;
+  }
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    paste.hidden = false;
+    paste.onclick = function () {
+      navigator.clipboard.readText().then(function (t) { link.value = t.trim(); }).catch(function () { show('Телефон не дал прочитать буфер — вставьте ссылку долгим нажатием в поле.', true); });
+    };
+  }
+
+  done.onclick = function () {
+    var text = link.value.trim();
+    if (!looksLikeSub(text)) { show('Это не похоже на подписку VPN. Скопируйте ссылку в боте или приложении вашего VPN-сервиса.', true); return; }
+    done.disabled = true;
+    show('Шифруем и отправляем…');
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    crypto.subtle.importKey('raw', unb64u(k), 'AES-GCM', false, ['encrypt'])
+      .then(function (key) { return crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, new TextEncoder().encode(text)); })
+      .then(function (ct) {
+        return fetch('api.php?s=' + encodeURIComponent(s), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ iv: b64u(iv), ct: b64u(new Uint8Array(ct)) }) });
+      })
+      .then(function (r) {
+        if (r.status === 200) { document.getElementById('form').style.display = 'none'; document.getElementById('ok').style.display = 'block'; return; }
+        done.disabled = false;
+        show(r.status === 409 ? 'По этому QR-коду подписка уже отправлена. Для новой откройте «Добавить подписку» на ТВ заново.' : 'Не получилось отправить (ошибка ' + r.status + '). Попробуйте ещё раз.', true);
+      })
+      .catch(function () { done.disabled = false; show('Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.', true); });
+  };
+})();
+</script>
+</body>
+</html>

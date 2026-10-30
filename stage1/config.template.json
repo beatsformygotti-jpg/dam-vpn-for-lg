@@ -1,0 +1,54 @@
+{
+  "log": {
+    "loglevel": "debug",
+    "access": "",
+    "error": "",
+    "dnsLog": false,
+    "maskAddress": "full"
+  },
+  "inbounds": [
+    {
+      "tag": "socks-in",
+      "listen": "127.0.0.1",
+      "port": 10808,
+      "protocol": "socks",
+      "settings": {
+        "auth": "noauth",
+        "udp": false
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "quattro",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "__SERVER_ADDRESS__",
+            "port": "__SERVER_PORT__",
+            "users": [
+              {
+                "id": "__VLESS_UUID__",
+                "encryption": "none",
+                "flow": ""
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "grpc",
+        "security": "tls",
+        "tlsSettings": {
+          "serverName": "__TLS_SNI__",
+          "allowInsecure": false
+        },
+        "grpcSettings": {
+          "serviceName": "__GRPC_SERVICE_NAME__",
+          "multiMode": false
+        }
+      }
+    }
+  ]
+}

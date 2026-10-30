@@ -1,0 +1,55 @@
+{
+  "inbound": {
+    "tag": "tun-in",
+    "protocol": "tun",
+    "settings": {
+      "name": "damvpn0",
+      "mtu": 1500,
+      "gateway": ["10.233.0.1/30"],
+      "autoOutboundsInterface": "__WAN__"
+    }
+  },
+  "dnsInbound": {
+    "tag": "dns-in",
+    "listen": "__TV_IP__",
+    "port": 53,
+    "protocol": "tunnel",
+    "settings": {
+      "address": "8.8.8.8",
+      "port": 53,
+      "network": "tcp,udp"
+    }
+  },
+  "outbounds": [
+    {
+      "tag": "dns-out",
+      "protocol": "dns"
+    },
+    {
+      "tag": "block",
+      "protocol": "blackhole"
+    }
+  ],
+  "dns": {
+    "servers": ["8.8.8.8", "1.1.1.1"],
+    "queryStrategy": "UseIPv4"
+  },
+  "routing": {
+    "rules": [
+      {
+        "inboundTag": ["dns-in"],
+        "source": ["__TV_IP__", "127.0.0.1"],
+        "outboundTag": "dns-out"
+      },
+      {
+        "inboundTag": ["dns-in"],
+        "outboundTag": "block"
+      },
+      {
+        "inboundTag": ["tun-in"],
+        "port": "53",
+        "outboundTag": "dns-out"
+      }
+    ]
+  }
+}
